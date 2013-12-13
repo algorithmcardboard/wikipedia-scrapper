@@ -1,4 +1,9 @@
 WikipediaScrapper::Application.routes.draw do
+
+  root "event#index"
+
+  get "event/index"
+  get "event/date"
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 

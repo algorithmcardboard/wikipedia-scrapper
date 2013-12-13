@@ -1,4 +1,4 @@
-source 'https://rubygems.org'
+source 'http://rubygems.org'
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '4.0.1'
@@ -37,6 +37,7 @@ end
 
 # Use unicorn as the app server
 # gem 'unicorn'
+# gem 'unicorn-rails'
 
 # Use Capistrano for deployment
 # gem 'capistrano', group: :development
@@ -46,3 +47,15 @@ end
 #
 gem 'capistrano'
 gem 'sidekiq'
+gem 'bootstrap-sass', '~> 3.0.2.0'
+gem 'font-awesome-rails'
+gem 'gon'
+gem 'foreigner'
+gem 'nokogiri'
+
+group :development, :test do
+  gem 'rspec-rails'
+  gem 'factory_girl_rails'
+end
+
+ruby "2.0.0"
