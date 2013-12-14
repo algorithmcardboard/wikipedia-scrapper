@@ -3,7 +3,10 @@ WikipediaScrapper::Application.routes.draw do
   root "event#index"
 
   get "event/index"
-  get "event/date"
+
+  scope :format => true, :constraints => { :format => 'json' } do
+    get "event/date/:month_date" => "event#date"
+  end
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".
 
