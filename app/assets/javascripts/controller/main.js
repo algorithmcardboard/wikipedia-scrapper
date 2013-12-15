@@ -5,6 +5,7 @@
 
     $scope.days_in_month = $window.gon.days_in_month;
     $scope.category_mapping = {36 : 'Events', 37:'Births', 38:'Deaths', 39:'Holidays'}
+    $scope.duplicateCount = 0;
 
     $scope.fetchEvents = function(){
       if(!$scope.month || !$scope.day || !$scope.threshold){
@@ -35,6 +36,7 @@
               $scope.events[event.category_id][event.event_id] = event;
               continue;
             }
+            $scope.duplicateCount++;
             var parent_event = $scope.events[event.category_id][event.belongs_to];
             if(!parent_event.duplicates){
               parent_event.duplicates = [];
@@ -42,7 +44,7 @@
             parent_event.duplicates.push(event);
           }
 
-          $scope.status = 'Merged duplicates';
+          $scope.status = 'Found '+$scope.duplicateCount+' duplicates';
 
           if(response.data.status !== 'Done'){
             $timeout($scope.pollWikiEvents,800);

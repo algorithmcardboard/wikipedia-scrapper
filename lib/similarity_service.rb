@@ -6,6 +6,10 @@ module SimilarityService
     return similarity_score > 0.45
   end
 
+  # 
+  # is same as  http://rosettacode.org/wiki/Levenshtein_distance#Ruby
+  # Donno why i changed the variable names alone!!
+  #
   def editDistance(sentence1, sentence2)
     first_array = sentence1.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
     second_array = sentence2.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
