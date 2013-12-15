@@ -1,7 +1,6 @@
 class EventController < ApplicationController
   include RedisService
 
-  PARSER_LOCK_KEY = 'wikiparser'
     def index
     end
 
@@ -29,46 +28,48 @@ class EventController < ApplicationController
       end
 
       $redis.expire(PARSER_LOCK_KEY,REDIS_TIMEOUT);
-      getEventsAfterPopulatingInvertedIndex(month,day)
-
+      result = getEventsAfterPopulatingInvertedIndex(month,day)
 
       WikipediaParser.perform_async(month,day, threshold)
-      render json: {}
+      render json: result 
+    end
+
+    def poll
+      results = Array.new
+      while(!(event = $redis.rpop(REDIS_OUTPUT_QUEUE)).blank?)
+        event = JSON.parse(event)
+        results << event
+      end
+      status = getProcessStatusInRedis()
+
+      if(status == 'Done')
+        purgeAllRedisData()
+      end
+
+      render json: {events:results, status: status}
     end
 
   private
     def getEventsAfterPopulatingInvertedIndex(month,day)
-      Event.where(["month = ? and day = ?",month, day]).each do |event|
+      category_eventId_event = Hash.new
+
+      Event.select(:id, :category_id, :name, :event, :year).where(["month = ? and day = ?",month, day]).each do |event|
+        if(category_eventId_event[event.category_id].blank?)
+          category_eventId_event[event.category_id] = Hash.new
+        end
+        category_eventId_event[event.category_id][event.id] = event
 
         event_words = event.event.downcase.gsub(/[^\w\d ]/," ").split + event.name.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
         event_year = event.year
         event_category = event.category_id
 
         pushYearAndEventToInvertedIndex(event_category, month, day, event_year, event.id)
-
+        pushWordLengthForEvent(event.id, event_words.length)
         event_words.each  do |word|
           pushWordAndEventToInvertedIndex(event_category, month, day, word, event.id)
         end
-        
-        pushWordLengthForEvent(event.id, event_words.length)
       end
-    end
 
-    def pushWordLengthForEvent(event_id, event_words_length)
-      redis_length_key = getKeyForLength(event_id)
-      $redis.set(redis_length_key, event_words_length)
-      $redis.expire(redis_length_key, REDIS_TIMEOUT)
-    end
-
-    def pushYearAndEventToInvertedIndex(category_id, month, day, year, event_id)
-      redis_year_key = getYearKey(category_id, year, month, day);
-      $redis.sadd(redis_year_key, event_id)
-      $redis.expire(redis_year_key, REDIS_TIMEOUT)
-    end
-
-    def pushWordAndEventToInvertedIndex(category_id, month, day, word, event_id)
-      redis_word_key = getTextKey(category_id, word, month, day);
-      $redis.sadd(redis_word_key, event_id)
-      $redis.expire(redis_word_key, REDIS_TIMEOUT)
+      return category_eventId_event
     end
 end

@@ -1,3 +1,8 @@
-body{
-  padding-top: 70px;
+
+ul.nav.nav-tabs{
+  padding-top:30px;
+}
+
+.single-event:hover{
+  @include gradient-vertical(#EEEEEE,#EEEEEE, 0%, 100%);
 }

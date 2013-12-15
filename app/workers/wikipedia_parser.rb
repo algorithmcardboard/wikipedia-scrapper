@@ -14,10 +14,13 @@ class WikipediaParser
     wikipedia_url = WIKIPEDIA_PREFIX+"/wiki/#{month_name}_#{day}"
     logger.info wikipedia_url
 
+    setProcessStatusInRedis('Fetching Wikipedia page')
     doc = Nokogiri::HTML(open(wikipedia_url))
 
     duplicate_events = Hash.new
+    @negative_event_id = -1
 
+    setProcessStatusInRedis('Parsing Content')
     doc.css('.mw-headline').each do |headline_div|
 
       unless (Rails.application.config.allowed_wiki_headlines.has_key?(headline_div.text))
@@ -37,7 +40,9 @@ class WikipediaParser
 
     #process only for duplicates
     
+    setProcessStatusInRedis('Deduping events')
     calculateEditDistanceAndPush(duplicate_events, threshold)
+    setProcessStatusInRedis('Done')
   end
 
   private
@@ -47,7 +52,7 @@ class WikipediaParser
       Event.select(:id, :name, :event, :year, :category_id).where(["id in (?)",ids]).each do |event|
         duplicate_events[event.id.to_s].each do |wiki_text|
           
-          wiki_node = Nokogiri::HTML(wiki_text)
+          wiki_node = Nokogiri::HTML::fragment(wiki_text)
           belongs_to = nil
 
           if(editDistance(event.name, event.event, wiki_node) < threshold)
@@ -115,8 +120,28 @@ class WikipediaParser
     end
 
     def parseAndPushToRedisOutputQueue(year, event_node, belongs_to, category_id)
+
+      @negative_event_id -= 1
       event_node.css("a").each do |anchor|
         anchor['href'] = WIKIPEDIA_PREFIX + anchor['href']
       end
+
+      event_text = event_node.text
+
+      output_text = event_text.split("–",2)[1]
+      if(output_text.blank?)
+        logger.error "output_text blank for #{event_text}"
+      end
+
+      output =  {
+        event_id: @negative_event_id,
+        event: event_node.to_s,
+        category_id: category_id,
+        belongs_to: belongs_to,
+        src:'wikipedia',
+        year: year
+      }
+
+      $redis.lpush(REDIS_OUTPUT_QUEUE, output.to_json)
     end
 end

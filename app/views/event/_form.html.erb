@@ -1,11 +1,9 @@
-<form class="form-inline" role="form">
+<form class="form-inline" role="form" name="scrapperInput" ng-cloak>
+  <label> Select a Month & day: </label>
   <div class="form-group">
-    <label class="control-label sr-only"> Select a day </label>
-    <p class="form-control-static">email@example.com</p>
-  </div>
-  <div class="form-group">
-    <select class="form-control" id="month_selector" name="month" ng-model="month">
-      <option selected disabled hidden value=''></option>
+    <label class="sr-only" for="month_selector"> Day </label>
+    <select ng-disabled="processing" class="form-control" id="month_selector" name="month" ng-model="month" required>
+      <option selected disabled hidden value=''>Month</option>
       <option value="1">January</option>
       <option value="2">February</option>
       <option value="3">March</option>
@@ -21,8 +19,9 @@
     </select>
   </div>
   <div class="form-group">
-    <select class="form-control" id="day_selector" name="day" ng-model="day">
-      <option selected disabled hidden value=''></option>
+    <label class="sr-only" for="day_selector"> Day </label>
+    <select ng-disabled="processing" class="form-control" id="day_selector" name="day" ng-model="day" required>
+      <option selected disabled hidden value=''>Day</option>
       <option value="1"> 1 </option>
       <option value="2"> 2 </option>
       <option value="3"> 3 </option>
@@ -56,4 +55,9 @@
       <option ng-disabled="days_in_month[month-1] < 31" value="31"> 31 </option>
     </select>
   </div>
+  <div class="form-group">
+    <label class="sr-only" for="threshold_input"> Threshold </label>
+    <input type="text" ng-init="threshold=5" ng-model="threshold" class="form-control" ng-disabled="processing" id="threshold_input" placeholder="Enter threshold (5 default)" required>
+  </div>
+  <button type="button" ng-click="fetchEvents()" ng-disabled="scrapperInput.$invalid || processing" class="btn btn-primary">Get events</button>
 </form>
