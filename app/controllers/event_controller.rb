@@ -7,6 +7,9 @@ class EventController < ApplicationController
 
     def date
       month_date = params[:month_date] #not changing to any custom name.  Need not bother this one.
+      threshold = params[:threshold].to_i
+
+      threshold = 3 if(threshold.blank?)
 
       month, day = month_date.split("_").map{ |n| n.to_i}
 
@@ -29,7 +32,7 @@ class EventController < ApplicationController
       getEventsAfterPopulatingInvertedIndex(month,day)
 
 
-      WikipediaParser.perform_async(month,day)
+      WikipediaParser.perform_async(month,day, threshold)
       render json: {}
     end
 

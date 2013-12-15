@@ -4,11 +4,11 @@ require 'open-uri'
 require 'set'
 
 class WikipediaParser
-  include Sidekiq::Worker, RedisService
+  include Sidekiq::Worker, RedisService, WikiparserService, SimilarityService
 
   WIKIPEDIA_PREFIX = 'http://en.wikipedia.org';
 
-  def perform(month, day)
+  def perform(month, day, threshold)
     month_name = Rails.application.config.months_name[month - 1]
 
     wikipedia_url = WIKIPEDIA_PREFIX+"/wiki/#{month_name}_#{day}"
@@ -33,71 +33,62 @@ class WikipediaParser
       duplicate_events.merge!(processEventsInPage(month, day, headline_div))
     end
 
-    duplicate_events.each do |key, value|
-      logger.info "#{key} => #{value.size()}"
-    end
+    return if(duplicate_events.blank?)
+
+    #process only for duplicates
+    
+    calculateEditDistanceAndPush(duplicate_events, threshold)
   end
 
   private
+
+    def calculateEditDistanceAndPush(duplicate_events, threshold)
+      ids = duplicate_events.keys
+      Event.select(:id, :name, :event, :year, :category_id).where(["id in (?)",ids]).each do |event|
+        duplicate_events[event.id.to_s].each do |wiki_text|
+          
+          wiki_node = Nokogiri::HTML(wiki_text)
+          belongs_to = nil
+
+          if(editDistance(event.name, event.event, wiki_node) < threshold)
+            belongs_to = event.id
+          end
+
+          parseAndPushToRedisOutputQueue(event.year, wiki_node, belongs_to, event.category_id)
+        end
+      end
+    end
 
     def processEventsInPage(month, day, headline_div)
 
       possible_duplicate_events = Hash.new
 
       category_id = Rails.application.config.wiki_tih_mapping[headline_div.text]
-      logger.info "known headline #{headline_div.text} with category id #{category_id}"
+      logger.info "known headline #{headline_div.text} with category_id #{category_id}"
 
       unpushed = pushed = 0
 
       headline_div.parent.next_element.css("li").each do |event_node|
 
         event_node.name = 'span'
-        #parse and get year and text.  Split text to array and remove stop words
         year, event_text = event_node.text.split("–", 2)
-        year = getYearValueInInt(year)
-        event_words = event_text.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
 
-        year_key =  getYearKey(category_id, year, month, day)
+        #parse and get year and text.  Split text to array and remove stop words
+        year_key = getYearKey(category_id, getYearValueInInt(year), month, day)
         events_on_year = $redis.smembers(year_key)
 
         #if no events for the year. There is no point in searching with words. Just push the text directly to the output stream
-        if(events_on_year.blank?)
-          parseAndPushToRedisOutputQueue(year, event_node)
+        if(events_on_year.blank? || (common_events = getCommonEvents(year_key, month, day, event_text, category_id)).blank?)
+          parseAndPushToRedisOutputQueue(year, event_node, nil, category_id)
           pushed += 1
           next
         end
 
-        common_events = Hash.new
-
-        event_words.each do |word|
-          cur_event = Hash[$redis.sinter(year_key, getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
-          #intersect cur_event and common_events and add the number of times we have seen a particular event 
-          #.  This will help us calculate cosine similarity
-          common_events.merge!(cur_event) {|key,val1,val2| val1+val2}
-        end
-
-        #remove all entries that doesn't meet a threshold
-        common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
-
-        if(common_events.blank?)
-          parseAndPushToRedisOutputQueue(year, event_node)
-          pushed += 1
-          next
-        end
-
-        logger.debug "Not pushing directly for year #{year} #{category_id} #{common_events} #{event_words}"
         unpushed += 1
 
-        #collect all the duplicates
-        common_events.each do |event_id,count|
-          logger.debug "adding for event #{event_id}"
-          if(possible_duplicate_events[event_id].blank?)
-            logger.debug "creating a new set for event #{event_id}"
-            possible_duplicate_events[event_id] = Set.new
-          end
+        common_events.update(common_events){|key, value| Set.new [event_node.to_s]}
 
-          possible_duplicate_events[event_id].add(event_node.to_s)
-        end
+        possible_duplicate_events.merge!(common_events) {|key, val1, val2| val1.merge(val2)}
 
       end
       logger.info "#{pushed} pushed directly.  #{unpushed} yet to be processed"
@@ -105,42 +96,27 @@ class WikipediaParser
       possible_duplicate_events
     end
 
-    def getYearValueInInt(year)
-      year = year.strip
-      mul_factor = 1;
+    def getCommonEvents(year_key, month, day, event_text, category_id)
+      event_words = event_text.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
 
-      if(year.match(/.* BC$/))
-        mul_factor = -1
+      common_events = Hash.new
+
+      event_words.each do |word|
+        cur_event = Hash[$redis.sinter(year_key, getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
+        #intersect cur_event and common_events and add the number of times we have seen a particular event 
+        #.  This will help us calculate cosine similarity
+        common_events.merge!(cur_event) {|key,val1,val2| val1+val2}
       end
 
-      return mul_factor * year.to_i
+      #remove all entries that doesn't meet a threshold
+      common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
+
+      common_events
     end
 
-    def isDateAnchor(anchorHref)
-      if(anchorHref.match(/^\/wiki\/\d+$|\d+_BC$/))
-        return true
-      end
-      return false
-    end
-
-    def getTitleFromHREF(anchorHref)
-      link = anchorHref.split('/').last
-      if(link.match(/#/))
-         link = link.split('#',2).last
-      end
-
-      link.tr("_"," ")
-    end
-
-    def parseAndPushToRedisOutputQueue(year, event_node)
+    def parseAndPushToRedisOutputQueue(year, event_node, belongs_to, category_id)
       event_node.css("a").each do |anchor|
         anchor['href'] = WIKIPEDIA_PREFIX + anchor['href']
       end
-    end
-
-    def isSimilar(count_similar, wc_new, wc_existing)
-      #cosine similarity
-      similarity_score = count_similar/(Math.sqrt(wc_new) * Math.sqrt(wc_existing))
-      return similarity_score > 0.45
     end
 end
