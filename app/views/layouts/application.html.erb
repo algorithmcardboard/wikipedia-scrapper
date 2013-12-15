@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html>
+<!--[if IE 8 ]>    <html id="ng-app" ng-app="wikiscrapper" class="ie"> <![endif]-->
+<!--[if IE 9 ]>    <html id="ng-app" ng-app="wikiscrapper" class="ie"> <![endif]-->
+<!--[if (gt IE 9)|!(IE)]><!--> <html id="ng-app" ng-app="wikiscrapper" class=""> <!--<![endif]-->
 <head>
   <title>WikipediaScrapper</title>
   <%= stylesheet_link_tag    "application", media: "all" %>
@@ -10,8 +12,12 @@
   <%= csrf_meta_tags %>
 </head>
 <body>
+<nav class="navbar navbar-default navbar-fixed-top" role="navigation" >
+</nav>
+<div class="container">
+  <%= yield %>
+</div>
 
-<%= yield %>
-
+<%= javascript_include_tag "application"%>
 </body>
 </html>
