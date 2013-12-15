@@ -64,7 +64,7 @@ class WikipediaParser
             @editDistancePass += 1
           else
             @editDistanceFail += 1
-            logger.warn "doesn't meet threshold #{event.id} #{event.event}"
+            logger.debug "doesn't meet threshold #{event.id} #{event.event}"
           end
 
           parseAndPushToRedisOutputQueue(event.year, wiki_node, belongs_to, event.category_id)
