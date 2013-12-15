@@ -18,7 +18,10 @@ class WikipediaParser
     doc = Nokogiri::HTML(open(wikipedia_url))
 
     duplicate_events = Hash.new
-    @negative_event_id = -1
+    @negative_event_id = 0 
+    @editDistancePass = 0
+    @editDistanceFail = 0
+    logger.info "Edit distance value is #{@editDistancePass}"
 
     setProcessStatusInRedis('Parsing Content')
     doc.css('.mw-headline').each do |headline_div|
@@ -43,6 +46,7 @@ class WikipediaParser
     setProcessStatusInRedis('Deduping events')
     calculateEditDistanceAndPush(duplicate_events, threshold)
     setProcessStatusInRedis('Done')
+    logger.info "total events passing edit distance check #{@editDistancePass}. Failed ones #{@editDistanceFail}"
   end
 
   private
@@ -55,8 +59,12 @@ class WikipediaParser
           wiki_node = Nokogiri::HTML::fragment(wiki_text)
           belongs_to = nil
 
-          if(editDistance(event.name, event.event, wiki_node) < threshold)
+          if(editDistance("#{event.name} #{event.event}", wiki_node.text) < threshold)
             belongs_to = event.id
+            @editDistancePass += 1
+          else
+            @editDistanceFail += 1
+            logger.warn "doesn't meet threshold #{event.id} #{event.event}"
           end
 
           parseAndPushToRedisOutputQueue(event.year, wiki_node, belongs_to, event.category_id)
