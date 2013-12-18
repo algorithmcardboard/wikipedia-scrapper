@@ -74,6 +74,14 @@
       return parentEvent;
     };
 
+    $scope.addMissingEvent = function(missingEvent){
+      console.log(missingEvent);
+    };
+
+    $scope.addDuplicateEvent = function(duplicateEvent){
+      console.log(duplicateEvent);
+    };
+
     $scope.initializing = false;
 
   }]);
