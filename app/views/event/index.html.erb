@@ -1,17 +1,38 @@
 <div ng-controller="MainController">
   <%= render "form" %>
 
-  <ul class="nav nav-tabs" ng-cloak ng-show="events">
-    <li ng-repeat="(id, name) in category_mapping"><a href="#{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}}</a></li>
-    <li class="pull-right disabled"><a eat-click>Status : {{status}} </a></li>
+  <ul class="nav nav-tabs" ng-cloak ng-show="missingCount > 0">
+    <li ng-repeat="(id, name) in category_mapping"><a href="#{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}} ( {{missingEvents[id].length}} )</a></li>
   </ul>
 
+  <div class="tab-content" ng-cloak ng-show="missingCount > 0">
+    <div ng-class="{active:$index==0}" class="tab-pane" ng-repeat="(category_id, missEvents) in missingEvents" id="{{category_mapping[category_id]}}"> 
+      <div class="list-group">
+        <div class="list-group-item single-event" ng-repeat="event in missEvents">
+          <div class="row">
+            <div class="col-md-1 label label-default" ng-bind="event.src | iif : event.src : 'DB'"></div>
+            <div class="col-md-1">{{event.year | convertToGeroginYear}}</div>
+            <div class="col-md-10">
+              <span ng-show="event.name">{{event.name + ' - '}}</span>
+              <span ng-bind-html="event.event | unsafe"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start of duplicate events pane -->
+
+  <ul class="nav nav-tabs" ng-cloak ng-show="duplicateCount > 0">
+    <li ng-repeat="(id, name) in category_mapping"><a href="#dup_{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}}</a></li>
+  </ul>
 
   <!-- Tab panes -->
-  <div class="tab-content" ng-cloak ng-show="events">
-    <div ng-class="{active:$index==0}" class="tab-pane" ng-repeat="(category_id, event_hash) in events" id="{{category_mapping[category_id]}}"> 
+  <div class="tab-content" ng-cloak ng-show="duplicateCount > 0">
+    <div ng-class="{active:$index==0}" class="tab-pane" ng-repeat="(category_id, dupEvents) in duplicateEvents" id="dup_{{category_mapping[category_id]}}"> 
       <div class="list-group">
-        <div class="list-group-item single-event" ng-repeat="(id, event) in event_hash">
+        <div class="list-group-item single-event" ng-repeat="(id,event) in dupEvents">
           <div class="row">
             <div class="col-md-1 label label-default" ng-bind="event.src | iif : event.src : 'DB'"></div>
             <div class="col-md-1">{{event.year | convertToGeroginYear}}</div>

@@ -6,12 +6,21 @@
     $scope.days_in_month = $window.gon.days_in_month;
     $scope.category_mapping = {36 : 'Events', 37:'Births', 38:'Deaths', 39:'Holidays'}
     $scope.duplicateCount = 0;
+    $scope.missingCount = 0;
+
+    $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
+    $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
 
     $scope.fetchEvents = function(){
       if(!$scope.month || !$scope.day || !$scope.threshold){
-        console.lof('form not valid');
+        alert('form not valid');
+        return;
       }
       $scope.processing = true;
+      $scope.duplicateCount = 0;
+      $scope.missingCount = 0;
+      $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
+      $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
 
       var month_date = $scope.month + "_" + $scope.day+".json";
       
@@ -21,39 +30,48 @@
           $scope.status = "Fetching wikipedia events...";
           $timeout($scope.pollWikiEvents,800);
         },function(response){
+          alert(response.data);
         });
     };
 
     $scope.pollWikiEvents = function(){
       $http.get("/event/poll.json")
         .then(function(response){
-          $scope.status = response.data.status;
+
           var length = response.data.events.length;
-          var events = response.data.events;
+          var responseEvents = response.data.events;
+
           for(var i = 0; i < length; i++){
-            var event = events[i];
-            if(!event.belongs_to){
-              $scope.events[event.category_id][event.event_id] = event;
+            var eventToAdd = responseEvents[i];
+            if(eventToAdd.belongs_to){
+              $scope.duplicateCount++;
+              if(!$scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to]){
+                $scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to] = $scope.getParentEvent(eventToAdd.category_id, eventToAdd.belongs_to);
+              }
+              $scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to].duplicates.push(eventToAdd);
               continue;
             }
-            $scope.duplicateCount++;
-            var parent_event = $scope.events[event.category_id][event.belongs_to];
-            if(!parent_event.duplicates){
-              parent_event.duplicates = [];
-            }
-            parent_event.duplicates.push(event);
+            $scope.missingCount++;
+            $scope.missingEvents[eventToAdd.category_id].push(eventToAdd)
           }
 
-          $scope.status = 'Found '+$scope.duplicateCount+' duplicates';
-
-          if(response.data.status !== 'Done'){
-            $timeout($scope.pollWikiEvents,800);
-          }else{
+          if(response.data.status === 'Done'){
             $scope.processing = false;
+          }else{
+            $timeout($scope.pollWikiEvents,800);
           }
-
         },function(response){
         });
+    };
+
+    $scope.getParentEvent = function(category_id, event_id){
+      var parentEvent =  $scope.events[category_id][event_id];
+      if(!parentEvent.duplicates){
+        parentEvent.duplicates = [];
+      }
+
+      delete $scope.events[category_id][event_id];
+      return parentEvent;
     };
 
     $scope.initializing = false;
