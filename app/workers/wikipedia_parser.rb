@@ -39,10 +39,7 @@ class WikipediaParser
       duplicate_events.merge!(processEventsInPage(month, day, headline_div))
     end
 
-    return if(duplicate_events.blank?)
-
     #process only for duplicates
-    
     setProcessStatusInRedis('Deduping events')
     calculateEditDistanceAndPush(duplicate_events, threshold)
     setProcessStatusInRedis('Done')
@@ -52,6 +49,7 @@ class WikipediaParser
   private
 
     def calculateEditDistanceAndPush(duplicate_events, threshold)
+      return if(duplicate_events.blank?)
       ids = duplicate_events.keys
       Event.select(:id, :name, :event, :year, :category_id).where(["id in (?)",ids]).each do |event|
         duplicate_events[event.id.to_s].each do |wiki_text|
