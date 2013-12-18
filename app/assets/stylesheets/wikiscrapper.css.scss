@@ -6,3 +6,20 @@ ul.nav.nav-tabs{
 .single-event:hover{
   @include gradient-vertical(#EEEEEE,#EEEEEE, 0%, 100%);
 }
+
+.event-actions{
+  position:absolute;
+  right:0px;
+  display:none;
+  padding:0px 10px 0px 10px;
+  @include gradient-vertical(#EEEEEE,#EEEEEE, 0%, 100%);
+}
+
+.list-group-item.single-event:hover .event-actions{
+  display:block;
+}
+
+.list-group-item.single-event:hover .duplicate-item .event-actions,
+.single-event .duplicate-item:hover .event-actions{
+  @include gradient-vertical(#FFFFFF,#FFFFFF, 0%, 100%);
+}

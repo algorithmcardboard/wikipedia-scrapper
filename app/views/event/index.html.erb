@@ -16,6 +16,9 @@
               <span ng-show="event.name">{{event.name + ' - '}}</span>
               <span ng-bind-html="event.event | unsafe"></span>
             </div>
+            <div class="pull-right event-actions">
+              <a href="#" eat-click ng-click="addMissingEvent(event)">Add event</a>
+            </div>
           </div>
         </div>
       </div>
@@ -48,6 +51,9 @@
               <div class="col-md-10">
                 <span ng-show="duplicate.name">{{event.name + ' - '}}</span>
                 <span ng-bind-html="duplicate.event | unsafe"></span>
+              </div>
+              <div class="pull-right event-actions">
+                <a href="#" eat-click ng-click="addDuplicateEvent(duplicate)>Add event</a>
               </div>
             </div>
           </div>
