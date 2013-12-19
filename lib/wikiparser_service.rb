@@ -29,9 +29,13 @@ module WikiparserService
     end
 
     def getEventDetailsForPersisting(wiki_text,category_id)
-      year, event_text = Nokogiri::HTML::fragment(wiki_text).text.split("–",2)
-      year = getYearValueInInt(year)
+      year = "0"
       name = ""
+
+      year, event_text = Nokogiri::HTML::fragment(wiki_text).text.split("–",2) if(category_id != 39)
+      event_text = wiki_text  if(category_id == 39)
+
+      year = getYearValueInInt(year)
 
       if(category_id == 37 || category_id == 38)
         name, event_text = event_text.split(",",2)

@@ -6,7 +6,7 @@ WikipediaScrapper::Application.config.allowed_wiki_headlines = {
   "Events"  =>  true,
   "Births"  =>  true,
   "Deaths"  =>  true,
-  "Holidays and observances"  =>  false,
+  "Holidays and observances"  =>  true,
   "External links" => false
 }
 

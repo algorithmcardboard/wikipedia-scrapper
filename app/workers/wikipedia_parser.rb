@@ -17,7 +17,7 @@ class WikipediaParser
     doc = Nokogiri::HTML(open(wikipedia_url))
 
     while(true)
-      logger.info "sleeping for 0.5 seconds"
+      logger.info "sleeping for 0.75 seconds"
       sleep 0.75
       if(getProcessStatusInRedis() == 'DB done')
         break;
@@ -28,7 +28,6 @@ class WikipediaParser
     @negative_event_id = 0 
     @editDistancePass = 0
     @editDistanceFail = 0
-    logger.info "Edit distance value is #{@editDistancePass}"
 
     setProcessStatusInRedis('Parsing Content')
     doc.css('.mw-headline').each do |headline_div|
@@ -60,9 +59,15 @@ class WikipediaParser
       ids = duplicate_events.keys
       Event.select(:id, :name, :event, :year, :category_id).where(["id in (?)",ids]).each do |event|
         duplicate_events[event.id.to_s].each do |wiki_text|
-          
+
           wiki_node = Nokogiri::HTML::fragment(wiki_text)
           belongs_to = nil
+
+          if(event.category_id.to_i == 39 || event.category_id.to_i == 36)
+            event_text = "#{event.name} #{event.event}"
+          else
+            event_text = "#{event.year} #{event.name} #{event.event}"
+          end
 
           if(editDistance("#{event.name} #{event.event}", wiki_node.text) < threshold)
             belongs_to = event.id
@@ -75,6 +80,27 @@ class WikipediaParser
           parseAndPushToRedisOutputQueue(event.year, wiki_node, belongs_to, event.category_id)
         end
       end
+      logger.info "Total pass #{@editDistancePass}. Total fail #{@editDistanceFail}"
+    end
+
+    def getCommonEventsForHoliday(event_node, day, month)
+      category_id = 39
+      event_text = event_node.text
+      event_words = event_text.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
+
+      common_events = Hash.new
+      event_words.each do |word|
+        cur_event = Hash[$redis.smembers(getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
+
+        # This will help us calculate cosine similarity
+        common_events.merge!(cur_event) {|key,val1,val2| val1+val2}
+      end
+
+      #remove all entries that doesn't meet a threshold
+      common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
+      common_events.update(common_events){|key, value| Set.new [event_node.to_s]}
+
+      return common_events #captain obvious
     end
 
     def processEventsInPage(month, day, headline_div)
@@ -86,9 +112,22 @@ class WikipediaParser
 
       unpushed = pushed = 0
 
+      #
+      # The below code should ideally be done with composition instead of such shitty way of writing. I hate this code.
+      #
+      if(category_id.to_i == 39)
+        headline_div.parent.next_element.css("li:not(:has(ul))").each do |event_node|
+          common_events = getCommonEventsForHoliday(event_node, day, month)
+          possible_duplicate_events.merge!(common_events) {|key, val1, val2| val1.merge(val2)}
+        end
+        return possible_duplicate_events
+      end
+
       headline_div.parent.next_element.css("li").each do |event_node|
 
         event_node.name = 'span'
+
+
         year, event_text = event_node.text.split("–", 2)
 
         #parse and get year and text.  Split text to array and remove stop words
@@ -141,7 +180,9 @@ class WikipediaParser
 
       event_text = event_node.text
 
-      output_text = event_text.split("–",2)[1]
+      output_text = event_text if(category_id.to_i == 39)
+      output_text = event_text.split("–",2)[1] if(category_id.to_i != 39)
+
       if(output_text.blank?)
         logger.error "output_text blank for #{event_text}"
       end
