@@ -5,11 +5,20 @@
 
     $scope.days_in_month = $window.gon.days_in_month;
     $scope.category_mapping = {36 : 'Events', 37:'Births', 38:'Deaths', 39:'Holidays'}
-    $scope.duplicateCount = 0;
-    $scope.missingCount = 0;
+    $scope.duplicateCount = {36:0, 37:0, 38:0, 39:0};
+    $scope.curMissingCategory = 36;
+    $scope.curDuplicateCategory = 36;
 
     $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
     $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
+
+    $scope.setMissingCategory = function(category_id){
+      $scope.curMissingCategory = category_id;
+    };
+
+    $scope.setDuplicateCategory = function(category_id){
+      $scope.curDuplicateCategory = category_id;
+    };
 
     $scope.fetchEvents = function(){
       if(!$scope.month || !$scope.day || !$scope.threshold){
@@ -17,10 +26,10 @@
         return;
       }
       $scope.processing = true;
-      $scope.duplicateCount = 0;
-      $scope.missingCount = 0;
+      $scope.fetched = false;
       $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
       $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
+      $scope.duplicateCount = {36:0, 37:0, 38:0, 39:0};
 
       var month_date = $scope.month + "_" + $scope.day+".json";
       
@@ -30,7 +39,7 @@
           $scope.status = "Fetching wikipedia events...";
           $timeout($scope.pollWikiEvents,800);
         },function(response){
-          alert(response.data);
+          alert(response.data.error);
         });
     };
 
@@ -44,19 +53,20 @@
           for(var i = 0; i < length; i++){
             var eventToAdd = responseEvents[i];
             if(eventToAdd.belongs_to){
-              $scope.duplicateCount++;
+              $scope.duplicateCount[eventToAdd.category_id]++;
               if(!$scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to]){
                 $scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to] = $scope.getParentEvent(eventToAdd.category_id, eventToAdd.belongs_to);
               }
               $scope.duplicateEvents[eventToAdd.category_id][eventToAdd.belongs_to].duplicates.push(eventToAdd);
               continue;
             }
-            $scope.missingCount++;
             $scope.missingEvents[eventToAdd.category_id].push(eventToAdd)
           }
 
           if(response.data.status === 'Done'){
             $scope.processing = false;
+            $scope.fetched = true;
+            $scope.events = null;
           }else{
             $timeout($scope.pollWikiEvents,800);
           }
@@ -74,12 +84,89 @@
       return parentEvent;
     };
 
-    $scope.addMissingEvent = function(missingEvent){
-      console.log(missingEvent);
+    $scope.serializeAllDuplicateEventsInCategory = function(){
+      var dupEvents = [];
+      var curCategoryHash = $scope.duplicateEvents[$scope.curDuplicateCategory];
+      Object.keys(curCategoryHash).forEach(function(key){
+        var dupLen = curCategoryHash[key].duplicates.length;
+        for(var j=0; j < dupLen; j++){
+          dupEvents[dupEvents.length] = [curCategoryHash[key].id, curCategoryHash[key].duplicates[j].event]
+        }
+      });
+      return dupEvents;
     };
 
-    $scope.addDuplicateEvent = function(duplicateEvent){
-      console.log(duplicateEvent);
+    $scope.addDuplicateEventsInCategory = function(eventObj){
+      var dupEvents = [];
+      if(eventObj){
+        if(eventObj.processing){
+          return;
+        }
+        eventObj.processing = true;
+        dupEvents[dupEvents.length] = [eventObj.belongs_to, eventObj.event]
+      }else{
+        dupEvents = $scope.serializeAllDuplicateEventsInCategory();
+      }
+
+      $scope.fetched = false;
+      $scope.processing = true;
+
+      $http.post("/event/addLinks.json", {duplicateEvents: dupEvents})
+        .then(function(response){
+          if(eventObj){
+            eventObj.processing = false;
+          }
+          $scope.fetched = true;
+          $scope.processing = false;
+        },function(response){
+          $scope.fetched = true;
+          $scope.processing = false;
+        });
+
+    };
+
+    $scope.serializeAllMissingEventsInCategory = function(category_id){
+      var missEvents = [];
+      var length = $scope.missingEvents[$scope.curMissingCategory].length;
+      for(var i = 0; i < length; i++){
+        missEvents.push ($scope.missingEvents[$scope.curMissingCategory][i].event)
+      }
+
+      return missEvents;
+    };
+
+    $scope.addMissingEventsInCategory = function(eventObj){
+      var missEvents = [];
+
+      if(eventObj){
+        if(eventObj.processing){
+          return;
+        }
+        eventObj.processing = true;
+        missEvents.push(eventObj.event);
+      }else{
+        missEvents = $scope.serializeAllMissingEventsInCategory($scope.curMissingCategory);
+      }
+
+      $scope.fetched = false;
+      $scope.processing = true;
+
+      $http.post("/event/addEvents.json", {missingEvents: missEvents, category_id : $scope.curMissingCategory, day:$scope.day, month: $scope.month})
+        .then(function(response){
+          if(!eventObj){
+            $scope.missingEvents[$scope.curMissingCategory] = [];
+          }else{
+            eventObj.processing = false;
+            var index = $scope.missingEvents[$scope.curMissingCategory].indexOf(eventObj);
+            $scope.missingEvents[$scope.curMissingCategory].splice(index,1);
+          }
+          $scope.fetched = true;
+          $scope.processing = false;
+        },function(response){
+          eventObj.processing = false;
+          $scope.processing = false;
+          $scope.fetched = true;
+        });
     };
 
     $scope.initializing = false;

@@ -52,6 +52,7 @@ gem 'font-awesome-rails'
 gem 'gon'
 gem 'foreigner'
 gem 'nokogiri'
+gem 'composite_primary_keys'
 
 group :development, :test do
   gem 'rspec-rails'

@@ -28,4 +28,15 @@ module WikiparserService
       return mul_factor * year.to_i
     end
 
+    def getEventDetailsForPersisting(wiki_text,category_id)
+      year, event_text = Nokogiri::HTML::fragment(wiki_text).text.split("–",2)
+      year = getYearValueInInt(year)
+      name = ""
+
+      if(category_id == 37 || category_id == 38)
+        name, event_text = event_text.split(",",2)
+      end
+      return [year, name.strip, event_text.strip]
+    end
+
 end

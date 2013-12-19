@@ -43,6 +43,8 @@ GEM
       coffee-script-source
       execjs
     coffee-script-source (1.6.3)
+    composite_primary_keys (6.0.1)
+      activerecord (>= 4.0.0)
     connection_pool (1.2.0)
     diff-lcs (1.2.5)
     erubis (2.7.0)
@@ -167,6 +169,7 @@ DEPENDENCIES
   bootstrap-sass (~> 3.0.2.0)
   capistrano
   coffee-rails (~> 4.0.0)
+  composite_primary_keys
   factory_girl_rails
   font-awesome-rails
   foreigner

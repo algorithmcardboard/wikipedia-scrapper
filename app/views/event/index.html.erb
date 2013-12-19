@@ -1,13 +1,25 @@
 <div ng-controller="MainController">
   <%= render "form" %>
 
-  <ul class="nav nav-tabs" ng-cloak ng-show="missingCount > 0">
-    <li ng-repeat="(id, name) in category_mapping"><a href="#{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}} ( {{missingEvents[id].length}} )</a></li>
+  <div class="page-header" ng-cloak>
+    <h3>Missing Events <small> . Events from Wikipedia and not in our db. Select a Month & Day</small></h3>
+  </div>
+
+  <ul class="nav nav-tabs" ng-cloak>
+    <li ng-click="setMissingCategory(id)" ng-repeat="(id, name) in category_mapping" ng-class="{active:$index===0}" >
+      <a href="#{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}} ( {{missingEvents[id].length}} )</a>
+    </li>
+    <li class="pull-right" ng-class="{disabled:!fetched}"> 
+      <a class="btn btn-primary" eat-click href="#" ng-click="addMissingEventsInCategory()">Add missing {{category_mapping[curMissingCategory]}}</a>
+    </li>
   </ul>
 
-  <div class="tab-content" ng-cloak ng-show="missingCount > 0">
+  <div class="tab-content" ng-cloak>
     <div ng-class="{active:$index==0}" class="tab-pane" ng-repeat="(category_id, missEvents) in missingEvents" id="{{category_mapping[category_id]}}"> 
       <div class="list-group">
+        <div class="list-group-item" ng-show="fetched && missingEvents[category_id].length == 0">
+          Added all {{category_mapping[category_id]}} to database
+        </div>
         <div class="list-group-item single-event" ng-repeat="event in missEvents">
           <div class="row">
             <div class="col-md-1 label label-default" ng-bind="event.src | iif : event.src : 'DB'"></div>
@@ -17,7 +29,7 @@
               <span ng-bind-html="event.event | unsafe"></span>
             </div>
             <div class="pull-right event-actions">
-              <a href="#" eat-click ng-click="addMissingEvent(event)">Add event</a>
+              <a href="#" eat-click ng-click="addMissingEventsInCategory(event)">Add event</a>
             </div>
           </div>
         </div>
@@ -26,13 +38,21 @@
   </div>
 
   <!-- Start of duplicate events pane -->
+  <div class="page-header" ng-cloak>
+    <h3>Duplicate Events <small>Events from Wikipedia that matches with those in db. Select a Month & Day.</small></h3>
+  </div>
 
-  <ul class="nav nav-tabs" ng-cloak ng-show="duplicateCount > 0">
-    <li ng-repeat="(id, name) in category_mapping"><a href="#dup_{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}}</a></li>
+  <ul class="nav nav-tabs" ng-cloak >
+    <li ng-click="setDuplicateCategory(id)" ng-repeat="(id, name) in category_mapping" ng-class="{active:$index===0}" >
+    <a href="#dup_{{category_mapping[id]}}" data-toggle="tab">{{category_mapping[id]}} ({{duplicateCount[id]}})</a>
+    </li>
+    <li class="pull-right" ng-class="{disabled:!fetched}"> 
+      <a class="btn btn-primary" eat-click href="#" ng-click="addDuplicateEventsInCategory()">Add Links from {{category_mapping[curDuplicateCategory]}}</a>
+    </li>
   </ul>
 
   <!-- Tab panes -->
-  <div class="tab-content" ng-cloak ng-show="duplicateCount > 0">
+  <div class="tab-content" ng-cloak >
     <div ng-class="{active:$index==0}" class="tab-pane" ng-repeat="(category_id, dupEvents) in duplicateEvents" id="dup_{{category_mapping[category_id]}}"> 
       <div class="list-group">
         <div class="list-group-item single-event" ng-repeat="(id,event) in dupEvents">
@@ -53,7 +73,7 @@
                 <span ng-bind-html="duplicate.event | unsafe"></span>
               </div>
               <div class="pull-right event-actions">
-                <a href="#" eat-click ng-click="addDuplicateEvent(duplicate)">Add event</a>
+                <a href="#" eat-click ng-click="addDuplicateEventsInCategory(duplicate)">Add duplicate</a>
               </div>
             </div>
           </div>

@@ -23,3 +23,7 @@ ul.nav.nav-tabs{
 .single-event .duplicate-item:hover .event-actions{
   @include gradient-vertical(#FFFFFF,#FFFFFF, 0%, 100%);
 }
+
+.nav > li > a:hover, .nav > li > a:focus{
+  background-color:#3276B1;
+}

@@ -7,6 +7,8 @@ WikipediaScrapper::Application.routes.draw do
   scope :format => true, :constraints => { :format => 'json' } do
     get "event/date/:month_date" => "event#date"
     get "event/poll" => "event#poll"
+    post "event/addEvents" => "event#addEvents"
+    post "event/addLinks" => "event#addLinks"
   end
   # The priority is based upon order of creation: first created -> highest priority.
   # See how all your routes lay out with "rake routes".

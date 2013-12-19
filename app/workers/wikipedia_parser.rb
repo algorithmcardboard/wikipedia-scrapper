@@ -14,8 +14,15 @@ class WikipediaParser
     wikipedia_url = WIKIPEDIA_PREFIX+"/wiki/#{month_name}_#{day}"
     logger.info wikipedia_url
 
-    setProcessStatusInRedis('Fetching Wikipedia page')
     doc = Nokogiri::HTML(open(wikipedia_url))
+
+    while(true)
+      logger.info "sleeping for 0.5 seconds"
+      sleep 0.75
+      if(getProcessStatusInRedis() == 'DB done')
+        break;
+      end
+    end
 
     duplicate_events = Hash.new
     @negative_event_id = 0 
