@@ -28,7 +28,9 @@ class WikipediaParser
     @negative_event_id = 0 
     @editDistancePass = 0
     @editDistanceFail = 0
+    @holidayCount = 0
 
+    #I shouldn't have done this. crap code
     setProcessStatusInRedis('Parsing Content')
     doc.css('.mw-headline').each do |headline_div|
 
@@ -49,6 +51,7 @@ class WikipediaParser
     setProcessStatusInRedis('Deduping events')
     calculateEditDistanceAndPush(duplicate_events, threshold)
     setProcessStatusInRedis('Done')
+    logger.info "holidayCount is #{@holidayCount}"
     logger.info "total events passing edit distance check #{@editDistancePass}. Failed ones #{@editDistanceFail}"
   end
 
@@ -85,6 +88,7 @@ class WikipediaParser
 
     def getCommonEventsForHoliday(event_node, day, month)
       category_id = 39
+      @holidayCount += 1
       event_text = event_node.text
       event_words = event_text.downcase.gsub(/[^\w\d ]/," ").split - Rails.application.config.stop_words
 
@@ -100,7 +104,11 @@ class WikipediaParser
       common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
       common_events.update(common_events){|key, value| Set.new [event_node.to_s]}
 
-      return common_events #captain obvious
+      if(common_events.blank?)
+        parseAndPushToRedisOutputQueue(0, event_node, nil, 39)
+      end
+
+      return common_events #returns common_events. this is captain obvious comment
     end
 
     def processEventsInPage(month, day, headline_div)
@@ -116,9 +124,13 @@ class WikipediaParser
       # The below code should ideally be done with composition instead of such shitty way of writing. I hate this code.
       #
       if(category_id.to_i == 39)
-        headline_div.parent.next_element.css("li:not(:has(ul))").each do |event_node|
-          common_events = getCommonEventsForHoliday(event_node, day, month)
-          possible_duplicate_events.merge!(common_events) {|key, val1, val2| val1.merge(val2)}
+        next_elem = headline_div.parent.next_element
+        while(next_elem.name != 'h2')
+          next_elem.css("li:not(:has(ul))").each do |event_node|
+            common_events = getCommonEventsForHoliday(event_node, day, month)
+            possible_duplicate_events.merge!(common_events) {|key, val1, val2| val1.merge(val2)}
+          end
+          next_elem = next_elem.next_element
         end
         return possible_duplicate_events
       end
