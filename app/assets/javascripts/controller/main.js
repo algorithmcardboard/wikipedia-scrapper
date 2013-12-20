@@ -21,7 +21,7 @@
     };
 
     $scope.fetchEvents = function(){
-      if(!$scope.month || !$scope.day || !$scope.threshold){
+      if(!$scope.month || !$scope.day){
         alert('form not valid');
         return;
       }
@@ -33,7 +33,7 @@
 
       var month_date = $scope.month + "_" + $scope.day+".json";
       
-      $http.get("/event/date/"+month_date, {params:{threshold:$scope.threshold}})
+      $http.get("/event/date/"+month_date)
         .then(function(response){
           $scope.events = response.data;
           $scope.status = "Fetching wikipedia events...";
