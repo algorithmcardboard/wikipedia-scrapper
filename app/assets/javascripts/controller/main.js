@@ -1,7 +1,7 @@
 (function(angular, app) {
   "use strict";
 
-  app.controller("MainController",["$scope", "$http", "$window", "$timeout", function($scope, $http, $window, $timeout) {
+  app.controller("MainController",["$scope", "$http", "$window", "$timeout", "$location", function($scope, $http, $window, $timeout, $location) {
 
     $scope.days_in_month = $window.gon.days_in_month;
     $scope.category_mapping = {36 : 'Events', 37:'Births', 38:'Deaths', 39:'Holidays'}
@@ -30,6 +30,9 @@
       $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
       $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
       $scope.duplicateCount = {36:0, 37:0, 38:0, 39:0};
+
+      $location.search('month',$scope.month);
+      $location.search('day',$scope.day);
 
       var month_date = $scope.month + "_" + $scope.day+".json";
       
@@ -169,7 +172,16 @@
         });
     };
 
+    $scope.checkLocationParams = function(){
+      if($location.search() && $location.search().month && $location.search().day){
+        $scope.month = $location.search().month;
+        $scope.day = $location.search().day;
+        $scope.fetchEvents();
+      }
+    };
+
     $scope.initializing = false;
+    $scope.checkLocationParams();
 
   }]);
 })(angular, app);

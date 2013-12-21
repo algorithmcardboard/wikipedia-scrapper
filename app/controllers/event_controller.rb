@@ -70,9 +70,8 @@ class EventController < ApplicationController
 
     def date
       month_date = params[:month_date] #not changing to any custom name.  Need not bother this one.
-      threshold = params[:threshold].to_i
 
-      threshold = 3 if(threshold.blank?)
+      threshold = 5
 
       month, day = month_date.split("_").map{ |n| n.to_i}
 
