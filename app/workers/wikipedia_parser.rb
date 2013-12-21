@@ -31,7 +31,7 @@ class WikipediaParser
     @holidayCount = 0
 
     #I shouldn't have done this. crap code
-    setProcessStatusInRedis('Parsing Content')
+    setProcessStatusInRedis('Fetching missing events')
     doc.css('.mw-headline').each do |headline_div|
 
       unless (Rails.application.config.allowed_wiki_headlines.has_key?(headline_div.text))
@@ -48,7 +48,7 @@ class WikipediaParser
     end
 
     #process only for duplicates
-    setProcessStatusInRedis('Deduping events')
+    setProcessStatusInRedis('Finding duplicates')
     calculateEditDistanceAndPush(duplicate_events, threshold)
     setProcessStatusInRedis('Done')
     logger.info "holidayCount is #{@holidayCount}"

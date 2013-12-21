@@ -8,6 +8,7 @@
     $scope.duplicateCount = {36:0, 37:0, 38:0, 39:0};
     $scope.curMissingCategory = 36;
     $scope.curDuplicateCategory = 36;
+    $scope.status = "Awaiting user input...";
 
     $scope.missingEvents = { 36:[], 37:[], 38:[], 39:[] };
     $scope.duplicateEvents = { 36:{}, 37:{}, 38:{}, 39:{} };
@@ -33,13 +34,14 @@
 
       $location.search('month',$scope.month);
       $location.search('day',$scope.day);
+      $scope.status = "Fetching events...";
 
       var month_date = $scope.month + "_" + $scope.day+".json";
       
       $http.get("/event/date/"+month_date)
         .then(function(response){
           $scope.events = response.data;
-          $scope.status = "Fetching wikipedia events...";
+          $scope.status = "Parsing wikipedia contents";
           $timeout($scope.pollWikiEvents,800);
         },function(response){
           alert(response.data.error);
@@ -49,6 +51,8 @@
     $scope.pollWikiEvents = function(){
       $http.get("/event/poll.json")
         .then(function(response){
+
+          $scope.status = response.data.status;
 
           var length = response.data.events.length;
           var responseEvents = response.data.events;
