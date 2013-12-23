@@ -59,9 +59,18 @@ class WikipediaParser
 
     def calculateEditDistanceAndPush(duplicate_events, threshold)
       return if(duplicate_events.blank?)
+
+      wiki_text_to_belongs_to = Hash.new
+
       ids = duplicate_events.keys
+
       Event.select(:id, :name, :event, :year, :category_id).where(["id in (?)",ids]).each do |event|
+
         duplicate_events[event.id.to_s].each do |wiki_text|
+          if(!wiki_text_to_belongs_to[wiki_text].blank? && !wiki_text_to_belongs_to[wiki_text][:belongs_to].blank?)
+            logger.debug "condition matched.. skipping. #{event.id}"
+            next
+          end
 
           wiki_node = Nokogiri::HTML::fragment(wiki_text)
           belongs_to = nil
@@ -80,10 +89,19 @@ class WikipediaParser
             logger.debug "doesn't meet threshold #{event.id} #{event.event}"
           end
 
-          parseAndPushToRedisOutputQueue(event.year, wiki_node, belongs_to, event.category_id)
+          wiki_text_to_belongs_to[wiki_text] = {
+            belongs_to: belongs_to,
+            year: event.year,
+            category_id: event.category_id
+          }
+
         end
       end
       logger.info "Total pass #{@editDistancePass}. Total fail #{@editDistanceFail}"
+
+      wiki_text_to_belongs_to.each do |wiki_text, belongs_hash|
+        parseAndPushToRedisOutputQueue(belongs_hash[:year], Nokogiri::HTML::fragment(wiki_text) , belongs_hash[:belongs_to], belongs_hash[:category_id])
+      end
     end
 
     def getCommonEventsForHoliday(event_node, day, month)
