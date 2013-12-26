@@ -18,6 +18,7 @@ set :linked_files, %w{config/database.yml .env}
 set :linked_dirs, %w{bin log tmp/pids tmp/cache tmp/sockets vendor/bundle public/system}
 
 set :unicorn_pid_file, 'tmp/pids/unicorn.pid'
+set :sidekiq_pid, 'tmp/pids/sidekiq.pid'
 
 # set :default_env, { path: "/opt/ruby/bin:$PATH" }
 set :keep_releases, 5
