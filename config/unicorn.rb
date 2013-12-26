@@ -79,7 +79,7 @@ before_fork do |server, worker|
   end
 
   # clear redis connection
-  $redis.quit unless $redis.blank?
+  Redis.current.quit
   
   # Throttle the master from forking too quickly by sleeping.  Due
   # to the implementation of standard Unix signal handlers, this
@@ -98,7 +98,7 @@ after_fork do |server, worker|
     ActiveRecord::Base.establish_connection
 
   # Give each child process its own Redis connection
-  $redis = Redis.new(:host => ENV["REDIS_HOST"], :port => ENV["REDIS_PORT"])
+  Redis.new(:host => ENV["REDIS_HOST"], :port => ENV["REDIS_PORT"])
 
   # if preload_app is true, then you may also want to check and
   # restart any other shared sockets/descriptors such as Memcached,
