@@ -79,7 +79,7 @@ before_fork do |server, worker|
   end
 
   # clear redis connection
-  $redis.quit
+  $redis.quit unless $redis.blank?
   
   # Throttle the master from forking too quickly by sleeping.  Due
   # to the implementation of standard Unix signal handlers, this
