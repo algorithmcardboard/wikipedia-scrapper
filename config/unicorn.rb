@@ -78,6 +78,9 @@ before_fork do |server, worker|
     end
   end
 
+  # clear redis connection
+  $redis.quit unless $redis.blank?
+
   # Throttle the master from forking too quickly by sleeping.  Due
   # to the implementation of standard Unix signal handlers, this
   # helps (but does not completely) prevent identical, repeated signals
@@ -94,20 +97,8 @@ after_fork do |server, worker|
   defined?(ActiveRecord::Base) and
     ActiveRecord::Base.establish_connection
 
-  # If you set the connection to Redis *before* forking,
-  # you will cause forks to share a file descriptor.
-  #
-  # This causes a concurrency problem by which one fork
-  # can read or write to the socket while others are
-  # performing other operations.
-  #
-  # Most likely you'll be getting ProtocolError exceptions
-  # mentioning a wrong initial byte in the reply.
-  #
-  # Thus we need to connect to Redis after forking the
-  # worker processes.
-
-  Redis.current.quit
+  # Give each child process its own Redis connection
+  $redis = Redis.new(:host => ENV["REDIS_HOST"], :port => ENV["REDIS_PORT"])
 
   # if preload_app is true, then you may also want to check and
   # restart any other shared sockets/descriptors such as Memcached,

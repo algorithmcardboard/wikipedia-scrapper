@@ -81,7 +81,7 @@ class EventController < ApplicationController
         return
       end
 
-      lock = Redis.current.setnx(PARSER_LOCK_KEY,params[:month_date])
+      lock = $redis.setnx(PARSER_LOCK_KEY,params[:month_date])
 
       logger.info "Value of lock is #{lock}"
 
@@ -90,7 +90,7 @@ class EventController < ApplicationController
         return
       end
 
-      Redis.current.expire(PARSER_LOCK_KEY,REDIS_TIMEOUT);
+      $redis.expire(PARSER_LOCK_KEY,REDIS_TIMEOUT);
 
       WikipediaParser.perform_async(month,day, threshold)
 
@@ -102,7 +102,7 @@ class EventController < ApplicationController
 
     def poll
       results = Array.new
-      while(!(event = Redis.current.rpop(REDIS_OUTPUT_QUEUE)).blank?)
+      while(!(event = $redis.rpop(REDIS_OUTPUT_QUEUE)).blank?)
         event = JSON.parse(event)
         results << event
       end
