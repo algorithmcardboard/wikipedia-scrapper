@@ -19,7 +19,7 @@ module RedisService
 
   def pushWordLengthForEvent(event_id, event_words_length)
     redis_length_key = getKeyForLength(event_id)
-    $redis.redis.set(redis_length_key, event_words_length)
+    $redis.set(redis_length_key, event_words_length)
     $redis.expire(redis_length_key, REDIS_TIMEOUT)
   end
 
