@@ -112,14 +112,14 @@ class WikipediaParser
 
       common_events = Hash.new
       event_words.each do |word|
-        cur_event = Hash[$redis.smembers(getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
+        cur_event = Hash[Redis.current.smembers(getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
 
         # This will help us calculate cosine similarity
         common_events.merge!(cur_event) {|key,val1,val2| val1+val2}
       end
 
       #remove all entries that doesn't meet a threshold
-      common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
+      common_events.select!{|event_id,count| isSimilar(count, event_words.length, Redis.current.get(getKeyForLength(event_id)).to_i)}
       common_events.update(common_events){|key, value| Set.new [event_node.to_s]}
 
       if(common_events.blank?)
@@ -162,7 +162,7 @@ class WikipediaParser
 
         #parse and get year and text.  Split text to array and remove stop words
         year_key = getYearKey(category_id, getYearValueInInt(year), month, day)
-        events_on_year = $redis.smembers(year_key)
+        events_on_year = Redis.current.smembers(year_key)
 
         #if no events for the year. There is no point in searching with words. Just push the text directly to the output stream
         if(events_on_year.blank? || (common_events = getCommonEvents(year_key, month, day, event_text, category_id)).blank?)
@@ -189,14 +189,14 @@ class WikipediaParser
       common_events = Hash.new
 
       event_words.each do |word|
-        cur_event = Hash[$redis.sinter(year_key, getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
+        cur_event = Hash[Redis.current.sinter(year_key, getTextKey(category_id, word, month, day) ).map{|elem| [elem,1]}]
         #intersect cur_event and common_events and add the number of times we have seen a particular event 
         #.  This will help us calculate cosine similarity
         common_events.merge!(cur_event) {|key,val1,val2| val1+val2}
       end
 
       #remove all entries that doesn't meet a threshold
-      common_events.select!{|event_id,count| isSimilar(count, event_words.length, $redis.get(getKeyForLength(event_id)).to_i)}
+      common_events.select!{|event_id,count| isSimilar(count, event_words.length, Redis.current.get(getKeyForLength(event_id)).to_i)}
 
       common_events
     end
@@ -226,6 +226,6 @@ class WikipediaParser
         year: year
       }
 
-      $redis.lpush(REDIS_OUTPUT_QUEUE, output.to_json)
+      Redis.current.lpush(REDIS_OUTPUT_QUEUE, output.to_json)
     end
 end
